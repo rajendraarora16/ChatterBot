@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from chatterbot import ChatBot
+from chatterbot.trainers import TwitterTrainer
 from settings import TWITTER
 import logging
 
@@ -29,14 +30,15 @@ chatbot = ChatBot(
     ],
     input_adapter="chatterbot.input.TerminalAdapter",
     output_adapter="chatterbot.output.TerminalAdapter",
-    database="./twitter-database.db",
+    database_uri="./twitter-database.db",
     twitter_consumer_key=TWITTER["CONSUMER_KEY"],
     twitter_consumer_secret=TWITTER["CONSUMER_SECRET"],
     twitter_access_token_key=TWITTER["ACCESS_TOKEN"],
-    twitter_access_token_secret=TWITTER["ACCESS_TOKEN_SECRET"],
-    trainer="chatterbot.trainers.TwitterTrainer"
+    twitter_access_token_secret=TWITTER["ACCESS_TOKEN_SECRET"]
 )
 
-chatbot.train()
+trainer = TwitterTrainer(chatbot)
+
+trainer.train()
 
 chatbot.logger.info('Trained database generated successfully!')

@@ -20,13 +20,13 @@ class TkinterGUIExample(tk.Tk):
 
         self.chatbot = ChatBot(
             "GUI Bot",
-            storage_adapter="chatterbot.storage.JsonFileStorageAdapter",
+            storage_adapter="chatterbot.storage.SQLStorageAdapter",
             logic_adapters=[
                 "chatterbot.logic.BestMatch"
             ],
-            input_adapter="chatterbot.input.VariableInputTypeAdapter",
+            input_adapter="chatterbot.input.InputAdapter",
             output_adapter="chatterbot.output.OutputAdapter",
-            database="../database.db"
+            database_uri="../database.db"
         )
 
         self.title("Chatterbot")

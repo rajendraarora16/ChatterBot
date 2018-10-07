@@ -11,10 +11,12 @@ element from the user.
 # import logging
 # logging.basicConfig(level=logging.INFO)
 
+CONVERSATION = 'example_feedback_conversation'
+
 # Create a new instance of a ChatBot
 bot = ChatBot(
     'Feedback Learning Bot',
-    storage_adapter='chatterbot.storage.JsonFileStorageAdapter',
+    storage_adapter='chatterbot.storage.SQLStorageAdapter',
     logic_adapters=[
         'chatterbot.logic.BestMatch'
     ],
@@ -22,13 +24,10 @@ bot = ChatBot(
     output_adapter='chatterbot.output.TerminalAdapter'
 )
 
-DEFAULT_SESSION_ID = bot.default_session.id
-
 
 def get_feedback():
-    from chatterbot.utils import input_function
 
-    text = input_function()
+    text = input()
 
     if 'yes' in text.lower():
         return True
@@ -44,22 +43,17 @@ print('Type something to begin...')
 # The following loop will execute each time the user enters input
 while True:
     try:
-        input_statement = bot.input.process_input_statement()
-        statement, response = bot.generate_response(input_statement, DEFAULT_SESSION_ID)
-
+        input_statement = bot.input.process_input()
+        statement, response = bot.generate_response(
+            input_statement,
+            CONVERSATION
+        )
         print('\n Is "{}" this a coherent response to "{}"? \n'.format(response, input_statement))
 
         if get_feedback():
-            bot.learn_response(response, input_statement)
+            bot.learn_response(CONVERSATION, response, input_statement)
 
         bot.output.process_response(response)
-
-        # Update the conversation history for the bot
-        # It is important that this happens last, after the learning step
-        bot.conversation_sessions.update(
-            bot.default_session.id_string,
-            (statement, response, )
-        )
 
     # Press ctrl-c or ctrl-d on the keyboard to exit
     except (KeyboardInterrupt, EOFError, SystemExit):

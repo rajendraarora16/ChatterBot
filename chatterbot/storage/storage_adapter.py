@@ -1,5 +1,4 @@
 import logging
-import os
 
 
 class StorageAdapter(object):
@@ -17,32 +16,30 @@ class StorageAdapter(object):
         self.adapter_supports_queries = True
         self.base_query = None
 
-    @property
-    def Statement(self):
+    def get_model(self, model_name):
         """
-        Create a storage-aware statement.
+        Return the model class for a given model name.
         """
 
-        if 'DJANGO_SETTINGS_MODULE' in os.environ:
-            django_project = __import__(os.environ['DJANGO_SETTINGS_MODULE'])
-            if 'use_django_models' in django_project.settings.CHATTERBOT:
-                if django_project.settings.CHATTERBOT['use_django_models'] is True:
-                    from django.apps import apps
-                    Statement = apps.get_model(django_project.settings.CHATTERBOT['django_app_name'], 'Statement')
-                    return Statement
+        # The string must be lowercase
+        model_name = model_name.lower()
 
-        from chatterbot.conversation.statement import Statement
-        statement = Statement
-        statement.storage = self
-        return statement
+        kwarg_model_key = '%s_model' % (model_name, )
 
-    def generate_base_query(self, chatterbot, session_id):
+        if kwarg_model_key in self.kwargs:
+            return self.kwargs.get(kwarg_model_key)
+
+        get_model_method = getattr(self, 'get_%s_model' % (model_name, ))
+
+        return get_model_method()
+
+    def generate_base_query(self, chatterbot, conversation):
         """
         Create a base query for the storage adapter.
         """
         if self.adapter_supports_queries:
             for filter_instance in chatterbot.filters:
-                self.base_query = filter_instance.filter_selection(chatterbot, session_id)
+                self.base_query = filter_instance.filter_selection(chatterbot, conversation)
 
     def count(self):
         """
@@ -50,14 +47,6 @@ class StorageAdapter(object):
         """
         raise self.AdapterMethodNotImplementedError(
             'The `count` method is not implemented by this adapter.'
-        )
-
-    def find(self, statement_text):
-        """
-        Returns a object from the database if it exists
-        """
-        raise self.AdapterMethodNotImplementedError(
-            'The `find` method is not implemented by this adapter.'
         )
 
     def remove(self, statement_text):
@@ -82,6 +71,15 @@ class StorageAdapter(object):
             'The `filter` method is not implemented by this adapter.'
         )
 
+    def create(self, **kwargs):
+        """
+        Creates a new statement matching the keyword arguments specified.
+        Returns the created statement.
+        """
+        raise self.AdapterMethodNotImplementedError(
+            'The `create` method is not implemented by this adapter.'
+        )
+
     def update(self, statement):
         """
         Modifies an entry in the database.
@@ -93,7 +91,7 @@ class StorageAdapter(object):
 
     def get_random(self):
         """
-        Returns a random statement from the database
+        Returns a random statement from the database.
         """
         raise self.AdapterMethodNotImplementedError(
             'The `get_random` method is not implemented by this adapter.'
@@ -118,28 +116,24 @@ class StorageAdapter(object):
         efficient method to get these results.
         """
         statement_list = self.filter()
+        response_statements = set()
+        statements_for_response_statements = []
 
-        responses = set()
-        to_remove = list()
         for statement in statement_list:
-            for response in statement.in_response_to:
-                responses.add(response.text)
+            if statement.in_response_to is not None:
+                response_statements.add(statement.in_response_to)
+
         for statement in statement_list:
-            if statement.text not in responses:
-                to_remove.append(statement)
+            if statement.text in response_statements:
+                statements_for_response_statements.append(statement)
 
-        for statement in to_remove:
-            statement_list.remove(statement)
-
-        return statement_list
+        return statements_for_response_statements
 
     class EmptyDatabaseException(Exception):
 
-        def __init__(self, value='The database currently contains no entries. At least one entry is expected. You may need to train your chat bot to populate your database.'):
-            self.value = value
-
-        def __str__(self):
-            return repr(self.value)
+        def __init__(self, message=None):
+            default = 'The database currently contains no entries. At least one entry is expected. You may need to train your chat bot to populate your database.'
+            super().__init__(message or default)
 
     class AdapterMethodNotImplementedError(NotImplementedError):
         """

@@ -1,4 +1,4 @@
-from .base_case import ChatBotTestCase
+from tests.base_case import ChatBotTestCase
 
 
 class AdapterTests(ChatBotTestCase):
@@ -8,14 +8,8 @@ class AdapterTests(ChatBotTestCase):
         When one adapter modifies its chatbot instance,
         the change should be the same in all other adapters.
         """
-        session = self.chatbot.input.chatbot.conversation_sessions.new()
-        self.chatbot.input.chatbot.conversation_sessions.update(
-            session.id_string,
-            ('A', 'B', )
-        )
+        self.chatbot.input.chatbot.read_only = 'TESTING'
 
-        session = self.chatbot.output.chatbot.conversation_sessions.get(
-            session.id_string
-        )
+        value = self.chatbot.output.chatbot.read_only
 
-        self.assertIn(('A', 'B', ), session.conversation)
+        self.assertEqual('TESTING', value)

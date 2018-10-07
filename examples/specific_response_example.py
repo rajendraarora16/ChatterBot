@@ -5,7 +5,7 @@ from chatterbot import ChatBot
 # Create a new instance of a ChatBot
 bot = ChatBot(
     'Exact Response Example Bot',
-    storage_adapter='chatterbot.storage.JsonFileStorageAdapter',
+    storage_adapter='chatterbot.storage.SQLStorageAdapter',
     logic_adapters=[
         {
             'import_path': 'chatterbot.logic.BestMatch'
@@ -13,10 +13,9 @@ bot = ChatBot(
         {
             'import_path': 'chatterbot.logic.SpecificResponseAdapter',
             'input_text': 'Help me!',
-            'output_text': 'Ok, here is a link: http://chatterbot.rtfd.org/en/latest/quickstart.html'
+            'output_text': 'Ok, here is a link: http://chatterbot.rtfd.org'
         }
-    ],
-    trainer='chatterbot.trainers.ListTrainer'
+    ]
 )
 
 # Get a response given the specific input

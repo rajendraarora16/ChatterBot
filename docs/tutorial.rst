@@ -10,8 +10,21 @@ Getting help
 If you’re having trouble with this tutorial, you can post a message on Gitter_
 to chat with other ChatterBot users who might be able to help.
 
+You can also `ask questions`_ on `Stack Overflow`_ under the ``chatterbot`` tag.
+
 If you believe that you have encountered an error in ChatterBot, please open a
 ticket on GitHub: https://github.com/gunthercox/ChatterBot/issues/new
+
+Installing ChatterBot
+=====================
+
+You can install ChatterBot on your system using Python's pip command.
+
+.. code-block:: bash
+
+   pip install chatterbot
+
+See :ref:`Installation` for alternative installation options.
 
 Creating your first chat bot
 ============================
@@ -26,7 +39,7 @@ The import for ChatterBot should look like the following line.
 
    from chatterbot import ChatBot
 
-Create a new instance of the :code:`ChatBot` class.
+Create a new instance of the ``ChatBot`` class.
 
 .. code-block:: python
 
@@ -41,37 +54,27 @@ Setting the storage adapter
 
 ChatterBot comes with built in adapter classes that allow it to connect
 to different types of databases. In this tutorial, we will be using the
-`JsonFileStorageAdapter` which is a simple storage adapter that stores data
-in a json formatted file on your hard disk. This functionality makes
-this storage adapter very good for testing and debugging.
+``SQLStorageAdapter`` which allows the chat bot to connect to SQL databases.
+By default, this adapter will create a `SQLite`_ database.
 
-.. warning::
-
-   The JsonFileStorageAdapter is not intended for use with large amounts of
-   data. You may experience serious performance problems if the size of
-   this database becomes too large.
-
-We will select the `JsonFileStorageAdapter` by specifying it in our chat
-bot's constructor.
-
-The `database` parameter is used to specify the path to the database
+The ``database`` parameter is used to specify the path to the database
 that the chat bot will use. For this example we will call the database
-`database.json`. The `database.json` file will be created automatically
-if it does not already exist.
+`database.sqlite3`. this file will be created automatically if it doesn't
+already exist.
 
 .. code-block:: python
 
    bot = ChatBot(
        'Norman',
-       storage_adapter='chatterbot.storage.JsonFileStorageAdapter',
-       database='./database.json'
+       storage_adapter='chatterbot.storage.SQLStorageAdapter',
+       database_uri='./database.sqlite3'
    )
 
 .. note::
 
-   The JsonFileStorageAdapter is ChatterBot's default adapter.
+   The SQLStorageAdapter is ChatterBot's default adapter.
    If you do not specify an adapter in your constructor,
-   the JsonDatabase adapter will be used automatically.
+   the SQLStorageAdapter adapter will be used automatically.
 
 Input and output adapters
 -------------------------
@@ -84,10 +87,10 @@ the terminal. The output terminal adapter prints the chat bot's response.
 
    bot = ChatBot(
        'Norman',
-       storage_adapter='chatterbot.storage.JsonFileStorageAdapter',
+       storage_adapter='chatterbot.storage.SQLStorageAdapter',
        input_adapter='chatterbot.input.TerminalAdapter',
        output_adapter='chatterbot.output.TerminalAdapter',
-       database='./database.json'
+       database_uri='./database.sqlite3'
    )
 
 Specifying logic adapters
@@ -107,14 +110,14 @@ operations.
 
    bot = ChatBot(
        'Norman',
-       storage_adapter='chatterbot.storage.JsonFileStorageAdapter',
+       storage_adapter='chatterbot.storage.SQLStorageAdapter',
        input_adapter='chatterbot.input.TerminalAdapter',
        output_adapter='chatterbot.output.TerminalAdapter',
        logic_adapters=[
            'chatterbot.logic.MathematicalEvaluation',
            'chatterbot.logic.TimeLogicAdapter'
        ],
-       database='./database.json'
+       database_uri='./database.sqlite3'
    )
 
 Getting a response from your chat bot
@@ -128,7 +131,7 @@ we can exit the loop and stop the program when a user enters `ctrl+c`.
 
    while True:
        try:
-        bot_input = bot.get_response(None)
+           bot_input = bot.get_response(None)
 
        except(KeyboardInterrupt, EOFError, SystemExit):
            break
@@ -141,7 +144,11 @@ You can speed up this process by training him with examples of existing conversa
 
 .. code-block:: python
 
-   bot.train([
+   from chatterbot.training import ListTrainer
+
+   trainer = ListTrainer(bot)
+
+   trainer.train([
        'How are you?',
        'I am good.',
        'That is good to hear.',
@@ -161,4 +168,7 @@ documentation for more details and examples.
 
 Up next: :doc:`./examples`
 
-.. _Gitter: https://gitter.im/chatter_bot/Lobby
+.. _Gitter: https://gitter.im/chatterbot/Lobby
+.. _SQLite: https://www.sqlite.org/
+.. _`Stack Overflow`: https://stackoverflow.com/questions/tagged/chatterbot
+.. _`ask questions`: https://stackoverflow.com/questions/ask

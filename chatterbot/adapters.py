@@ -1,19 +1,11 @@
-import logging
-
-
 class Adapter(object):
     """
     A superclass for all adapter classes.
+
+    :param chatbot: A ChatBot instance.
     """
 
-    def __init__(self, **kwargs):
-        self.logger = kwargs.get('logger', logging.getLogger(__name__))
-        self.chatbot = None
-
-    def set_chatbot(self, chatbot):
-        """
-        Gives the adapter access to an instance of the ChatBot class.
-        """
+    def __init__(self, chatbot, **kwargs):
         self.chatbot = chatbot
 
     class AdapterMethodNotImplementedError(NotImplementedError):
@@ -23,19 +15,15 @@ class Adapter(object):
         method in a subclass.
         """
 
-        def __init__(self, message=None):
+        def __init__(self, message='This method must be overridden in a subclass method.'):
             """
-            Set the message for the esception.
+            Set the message for the exception.
             """
-            if not message:
-                message = 'This method must be overridden in a subclass method.'
-            self.message = message
-
-        def __str__(self):
-            return self.message
+            super().__init__(message)
 
     class InvalidAdapterTypeException(Exception):
         """
-        An exception to be raised when an adapter of an unexpected class type is recieved.
+        An exception to be raised when an adapter
+        of an unexpected class type is received.
         """
         pass

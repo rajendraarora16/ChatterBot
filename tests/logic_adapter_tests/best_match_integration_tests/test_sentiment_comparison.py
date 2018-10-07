@@ -10,26 +10,30 @@ class BestMatchSentimentComparisonTestCase(ChatBotTestCase):
     """
 
     def setUp(self):
-        super(BestMatchSentimentComparisonTestCase, self).setUp()
+        super().setUp()
         from chatterbot.trainers import ListTrainer
         from chatterbot.comparisons import sentiment_comparison
 
-        self.chatbot.set_trainer(ListTrainer)
+        self.trainer = ListTrainer(
+            self.chatbot,
+            show_training_progress=False
+        )
+
         self.adapter = BestMatch(
+            self.chatbot,
             statement_comparison_function=sentiment_comparison
         )
-        self.adapter.set_chatbot(self.chatbot)
         self.adapter.initialize()
 
     def test_exact_input(self):
-        self.chatbot.train([
+        self.trainer.train([
             'What is your favorite flavor of ice cream?',
             'I enjoy raspberry ice cream.',
             'I am glad to hear that.',
             'Thank you.'
         ])
 
-        happy_statement = Statement('I enjoy raspberry ice cream.')
+        happy_statement = Statement(text='I enjoy raspberry ice cream.')
         response = self.adapter.process(happy_statement)
 
         self.assertEqual(response.confidence, 1)
@@ -37,14 +41,14 @@ class BestMatchSentimentComparisonTestCase(ChatBotTestCase):
 
     def test_close_input(self):
 
-        self.chatbot.train([
+        self.trainer.train([
             'What is your favorite flavor of ice cream?',
             'I enjoy raspberry ice cream.',
             'I am glad to hear that.',
             'Thank you.'
         ])
 
-        happy_statement = Statement('I enjoy raspberry.')
+        happy_statement = Statement(text='I enjoy raspberry.')
         response = self.adapter.process(happy_statement)
 
         self.assertEqual(response.text, 'I am glad to hear that.')

@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 from chatterbot.adapters import Adapter
 from chatterbot.utils import import_module
 
@@ -7,10 +6,16 @@ class LogicAdapter(Adapter):
     """
     This is an abstract class that represents the interface
     that all logic adapters should implement.
+
+    :param statement_comparison_function: The dot-notated import path to a statement comparison function.
+                                          Defaults to ``levenshtein_distance``.
+
+    :param response_selection_method: The a response selection method.
+                                      Defaults to ``get_first_response``.
     """
 
-    def __init__(self, **kwargs):
-        super(LogicAdapter, self).__init__(**kwargs)
+    def __init__(self, chatbot, **kwargs):
+        super().__init__(chatbot, **kwargs)
         from chatterbot.comparisons import levenshtein_distance
         from chatterbot.response_selection import get_first_response
 
@@ -87,8 +92,5 @@ class LogicAdapter(Adapter):
 
     class EmptyDatasetException(Exception):
 
-        def __init__(self, value='An empty set was received when at least one statement was expected.'):
-            self.value = value
-
-        def __str__(self):
-            return repr(self.value)
+        def __init__(self, message='An empty set was received when at least one statement was expected.'):
+            super().__init__(message)

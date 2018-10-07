@@ -1,78 +1,31 @@
-import json
-import random
-
 from chatterbot.storage import StorageAdapter
-from chatterbot.conversation import Response
-from chatterbot.conversation import Statement
-
-Base = None
-
-try:
-    from sqlalchemy.ext.declarative import declarative_base
-
-    Base = declarative_base()
-
-    class StatementTable(Base):
-        from sqlalchemy import Column, Integer, String, PickleType
-        from sqlalchemy.orm import relationship
-
-        __tablename__ = 'StatementTable'
-
-        def get_statement(self):
-            stmt = Statement(self.text, **self.extra_data)
-            for resp in self.in_response_to:
-                stmt.add_response(resp.get_response())
-            return stmt
-
-        def get_statement_serialized(context):
-            params = context.current_parameters
-            del params['text_search']
-            return json.dumps(params)
-
-        id = Column(Integer)
-        text = Column(String, primary_key=True)
-        extra_data = Column(PickleType)
-        # relationship:
-        in_response_to = relationship("ResponseTable", back_populates="statement_table")
-        text_search = Column(String, primary_key=True, default=get_statement_serialized)
-
-    class ResponseTable(Base):
-        from sqlalchemy import Column, Integer, String, ForeignKey
-        from sqlalchemy.orm import relationship
-
-        __tablename__ = 'ResponseTable'
-
-        def get_reponse_serialized(context):
-            params = context.current_parameters
-            del params['text_search']
-            return json.dumps(params)
-
-        id = Column(Integer)
-        text = Column(String, primary_key=True)
-        occurrence = Column(Integer)
-        statement_text = Column(String, ForeignKey('StatementTable.text'))
-
-        statement_table = relationship("StatementTable", back_populates="in_response_to", cascade="all", uselist=False)
-        text_search = Column(String, primary_key=True, default=get_reponse_serialized)
-
-        def get_response(self):
-            occ = {"occurrence": self.occurrence}
-            return Response(text=self.text, **occ)
-
-except ImportError:
-    pass
-
-
-def get_statement_table(statement):
-    responses = list(map(get_response_table, statement.in_response_to))
-    return StatementTable(text=statement.text, in_response_to=responses, extra_data=statement.extra_data)
-
-
-def get_response_table(response):
-    return ResponseTable(text=response.text, occurrence=response.occurrence)
 
 
 class SQLStorageAdapter(StorageAdapter):
+    """
+    SQLStorageAdapter allows ChatterBot to store conversation
+    data semi-structured T-SQL database, virtually, any database
+    that SQL Alchemy supports.
+
+    Notes:
+        Tables may change (and will), so, save your training data.
+        There is no data migration (yet).
+        Performance test not done yet.
+        Tests using other databases not finished.
+
+    All parameters are optional, by default a sqlite database is used.
+
+    It will check if tables are present, if they are not, it will attempt
+    to create the required tables.
+
+    :keyword database_uri: eg: sqlite:///database_test.db", use database_uri or database,
+        database_uri can be specified to choose database driver (database parameter will be ignored).
+    :type database_uri: str
+
+    :keyword read_only: False by default, makes all operations read only, has priority over all DB operations
+        so, create, update, delete will NOT be executed
+    :type read_only: bool
+    """
 
     def __init__(self, **kwargs):
         super(SQLStorageAdapter, self).__init__(**kwargs)
@@ -80,63 +33,70 @@ class SQLStorageAdapter(StorageAdapter):
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
 
-        self.database_name = self.kwargs.get("database")
+        self.database_uri = self.kwargs.get("database_uri", False)
 
-        if self.database_name:
+        # None results in a sqlite in-memory database as the default
+        if self.database_uri is None:
+            self.database_uri = "sqlite://"
 
-            # Create a sqlite file if a database name is provided
-            self.database_uri = self.kwargs.get(
-                "database_uri", "sqlite:///" + self.database_name + ".db"
-            )
+        # Create a file database if the database is not a connection string
+        if not self.database_uri:
+            self.database_uri = "sqlite:///db.sqlite3"
 
-        # The default uses sqlite in-memory database
-        self.database_uri = self.kwargs.get(
-            "database_uri", "sqlite://"
-        )
+        self.engine = create_engine(self.database_uri, convert_unicode=True)
 
-        self.engine = create_engine(self.database_uri)
+        from re import search
+
+        if search('^sqlite://', self.database_uri):
+            from sqlalchemy.engine import Engine
+            from sqlalchemy import event
+
+            @event.listens_for(Engine, "connect")
+            def set_sqlite_pragma(dbapi_connection, connection_record):
+                dbapi_connection.execute('PRAGMA journal_mode=WAL')
+                dbapi_connection.execute('PRAGMA synchronous=NORMAL')
 
         self.read_only = self.kwargs.get(
             "read_only", False
         )
 
-        if not self.engine.dialect.has_table(self.engine, 'StatementTable'):
-            self.create()
+        if not self.engine.dialect.has_table(self.engine, 'Statement'):
+            self.create_database()
 
         self.Session = sessionmaker(bind=self.engine, expire_on_commit=True)
+
+        # ChatterBot's internal query builder is not yet supported for this adapter
+        self.adapter_supports_queries = False
+
+    def get_statement_model(self):
+        """
+        Return the statement model.
+        """
+        from chatterbot.ext.sqlalchemy_app.models import Statement
+        return Statement
+
+    def get_tag_model(self):
+        """
+        Return the conversation model.
+        """
+        from chatterbot.ext.sqlalchemy_app.models import Tag
+        return Tag
+
+    def model_to_object(self, statement):
+        from chatterbot.conversation import Statement as StatementObject
+
+        return StatementObject(**statement.serialize())
 
     def count(self):
         """
         Return the number of entries in the database.
         """
+        Statement = self.get_model('statement')
+
         session = self.Session()
-        statement_count = session.query(StatementTable).count()
+        statement_count = session.query(Statement).count()
         session.close()
         return statement_count
-
-    def __statement_filter(self, session, **kwargs):
-        """
-        Apply filter operation on StatementTable
-
-        rtype: query
-        """
-        _query = session.query(StatementTable)
-        return _query.filter_by(**kwargs)
-
-    def find(self, statement_text):
-        """
-        Returns a statement if it exists otherwise None
-        """
-        session = self.Session()
-        query = self.__statement_filter(session, **{"text": statement_text})
-        record = query.first()
-        if record:
-            statement = record.get_statement()
-            session.close()
-            return statement
-
-        session.close()
-        return None
 
     def remove(self, statement_text):
         """
@@ -144,113 +104,161 @@ class SQLStorageAdapter(StorageAdapter):
         Removes any responses from statements where the response text matches
         the input text.
         """
+        Statement = self.get_model('statement')
         session = self.Session()
-        query = self.__statement_filter(session, **{"text": statement_text})
+
+        query = session.query(Statement).filter_by(text=statement_text)
         record = query.first()
 
         session.delete(record)
 
-        self._session_finish(session, statement_text)
+        self._session_finish(session)
 
     def filter(self, **kwargs):
         """
         Returns a list of objects from the database.
         The kwargs parameter can contain any number
-        of attributes. Only objects which contain
-        all listed attributes and in which all values
-        match for all listed attributes will be returned.
+        of attributes. Only objects which contain all
+        listed attributes and in which all values match
+        for all listed attributes will be returned.
         """
+        Statement = self.get_model('statement')
+        Tag = self.get_model('tag')
+
         session = self.Session()
 
-        filter_parameters = kwargs.copy()
+        order_by = kwargs.pop('order_by', None)
+        tags = kwargs.pop('tags', [])
 
-        statements = []
-        # _response_query = None
-        _query = None
-        if len(filter_parameters) == 0:
-            _response_query = session.query(StatementTable)
-            statements.extend(_response_query.all())
+        # Convert a single sting into a list if only one tag is provided
+        if type(tags) == str:
+            tags = [tags]
+
+        if len(kwargs) == 0:
+            statements = session.query(Statement).filter()
         else:
-            for i, fp in enumerate(filter_parameters):
-                _filter = filter_parameters[fp]
-                if fp in ['in_response_to', 'in_response_to__contains']:
-                    _response_query = session.query(StatementTable)
-                    if isinstance(_filter, list):
-                        if len(_filter) == 0:
-                            _query = _response_query.filter(
-                                StatementTable.in_response_to == None)  # NOQA Here must use == instead of is
-                        else:
-                            for f in _filter:
-                                _query = _response_query.filter(
-                                    StatementTable.in_response_to.contains(get_response_table(f)))
-                    else:
-                        if fp == 'in_response_to__contains':
-                            _query = _response_query.join(ResponseTable).filter(ResponseTable.text == _filter)
-                        else:
-                            _query = _response_query.filter(StatementTable.in_response_to == None)  # NOQA
-                else:
-                    if _query:
-                        _query = _query.filter(ResponseTable.text_search.like('%' + _filter + '%'))
-                    else:
-                        _response_query = session.query(ResponseTable)
-                        _query = _response_query.filter(ResponseTable.text_search.like('%' + _filter + '%'))
+            statements = session.query(Statement).filter_by(**kwargs)
 
-                if _query is None:
-                    return []
-                if len(filter_parameters) == i + 1:
-                    statements.extend(_query.all())
+        if tags:
+            statements = statements.join(Statement.tags).filter(
+                Tag.name.in_(tags)
+            )
+
+        if order_by:
+
+            if 'created_at' in order_by:
+                index = order_by.index('created_at')
+                order_by[index] = Statement.created_at.asc()
+
+            statements = statements.order_by(*order_by)
 
         results = []
 
         for statement in statements:
-            if isinstance(statement, ResponseTable):
-                if statement and statement.statement_table:
-                    results.append(statement.statement_table.get_statement())
-            else:
-                if statement:
-                    results.append(statement.get_statement())
+            results.append(self.model_to_object(statement))
 
         session.close()
 
         return results
+
+    def create(self, **kwargs):
+        """
+        Creates a new statement matching the keyword arguments specified.
+        Returns the created statement.
+        """
+        Statement = self.get_model('statement')
+        Tag = self.get_model('tag')
+
+        session = self.Session()
+
+        tags = set(kwargs.pop('tags', []))
+
+        statement = Statement(**kwargs)
+
+        for _tag in tags:
+            tag = session.query(Tag).filter_by(name=_tag).first()
+
+            if not tag:
+                # Create the tag
+                tag = Tag(name=_tag)
+
+            statement.tags.append(tag)
+
+        session.add(statement)
+
+        session.flush()
+
+        session.refresh(statement)
+
+        statement_object = self.model_to_object(statement)
+
+        self._session_finish(session)
+
+        return statement_object
 
     def update(self, statement):
         """
         Modifies an entry in the database.
         Creates an entry if one does not exist.
         """
-        if statement:
-            session = self.Session()
-            query = self.__statement_filter(session, **{"text": statement.text})
-            record = query.first()
+        Statement = self.get_model('statement')
+        Tag = self.get_model('tag')
 
-            if record:
-                # update
-                if statement.text:
-                    record.text = statement.text
-                if statement.extra_data:
-                    record.extra_data = dict[statement.extra_data]
-                if statement.in_response_to:
-                    record.in_response_to = list(map(get_response_table, statement.in_response_to))
-                session.add(record)
+        if statement is not None:
+            session = self.Session()
+            record = None
+
+            if hasattr(statement, 'id') and statement.id is not None:
+                record = session.query(Statement).get(statement.id)
             else:
-                session.add(get_statement_table(statement))
+                record = session.query(Statement).filter(
+                    Statement.text == statement.text,
+                    Statement.conversation == statement.conversation,
+                ).first()
+
+                # Create a new statement entry if one does not already exist
+                if not record:
+                    record = Statement(
+                        text=statement.text,
+                        conversation=statement.conversation,
+                        persona=statement.persona
+                    )
+
+            # Update the response value
+            record.in_response_to = statement.in_response_to
+
+            record.created_at = statement.created_at
+
+            for _tag in statement.tags:
+                tag = session.query(Tag).filter_by(name=_tag).first()
+
+                if not tag:
+                    # Create the record
+                    tag = Tag(name=_tag)
+
+                record.tags.append(tag)
+
+            session.add(record)
 
             self._session_finish(session)
 
     def get_random(self):
         """
-        Returns a random statement from the database
+        Returns a random statement from the database.
         """
+        import random
+
+        Statement = self.get_model('statement')
+
         session = self.Session()
         count = self.count()
         if count < 1:
             raise self.EmptyDatabaseException()
 
-        rand = random.randrange(0, count)
-        stmt = session.query(StatementTable)[rand]
+        random_index = random.randrange(0, count)
+        random_statement = session.query(Statement)[random_index]
 
-        statement = stmt.get_statement()
+        statement = self.model_to_object(random_statement)
 
         session.close()
         return statement
@@ -259,22 +267,25 @@ class SQLStorageAdapter(StorageAdapter):
         """
         Drop the database attached to a given adapter.
         """
+        from chatterbot.ext.sqlalchemy_app.models import Base
         Base.metadata.drop_all(self.engine)
 
-    def create(self):
+    def create_database(self):
         """
         Populate the database with the tables.
         """
+        from chatterbot.ext.sqlalchemy_app.models import Base
         Base.metadata.create_all(self.engine)
 
     def _session_finish(self, session, statement_text=None):
-        from sqlalchemy.exc import DatabaseError
+        from sqlalchemy.exc import InvalidRequestError
         try:
             if not self.read_only:
                 session.commit()
             else:
                 session.rollback()
-        except DatabaseError as e:
-            self.logger.error(statement_text, str(e.orig))
+        except InvalidRequestError:
+            # Log the statement text and the exception
+            self.logger.exception(statement_text)
         finally:
             session.close()

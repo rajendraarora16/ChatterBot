@@ -9,7 +9,7 @@ class Filter(object):
     filters should be subclassed.
     """
 
-    def filter_selection(self, chatterbot, session_id):
+    def filter_selection(self, chatterbot, conversation):
         """
         Because this is the base filter class, this method just
         returns the storage adapter's base query. Other filters
@@ -24,20 +24,34 @@ class RepetitiveResponseFilter(Filter):
     a chat bot from repeating statements that it has recently said.
     """
 
-    def filter_selection(self, chatterbot, session_id):
+    def filter_selection(self, chatterbot, conversation):
+        from collections import Counter
 
-        session = chatterbot.conversation_sessions.get(session_id)
+        # Get the 10 most recent statements from the conversation
+        conversation_statements = chatterbot.storage.filter(
+            conversation=conversation,
+            order_by=['id']
+        )[-10:]
 
-        if session.conversation.empty():
-            return chatterbot.storage.base_query
+        text_of_recent_responses = [
+            statement.in_response_to for statement in conversation_statements
+            if statement is not None and statement.in_response_to is not None
+        ]
 
-        text_of_recent_responses = []
+        counter = Counter(text_of_recent_responses)
 
-        for statement, response in session.conversation:
-            text_of_recent_responses.append(response.text)
+        # Find the three most common responses from the conversation
+        most_common = counter.most_common(3)
 
-        query = chatterbot.storage.base_query.statement_text_not_in(
-            text_of_recent_responses
+        # Return the query with no changes if there are no statements to exclude
+        if not most_common:
+            return super(RepetitiveResponseFilter, self).filter_selection(
+                chatterbot,
+                conversation
+            )
+
+        query = chatterbot.storage.base_query.statement_in_response_to_not_in(
+            [text[0] for text in most_common]
         )
 
         return query

@@ -1,17 +1,16 @@
-from django.test import TestCase
+from tests_django.base_case import ChatterBotTestCase
 from chatterbot.ext.django_chatterbot.models import Statement
+from chatterbot.input import InputAdapter
 
 
-class InputIntegrationTestCase(TestCase):
+class InputIntegrationTestCase(ChatterBotTestCase):
     """
     Tests to make sure that logic adapters
     function correctly when using Django.
     """
 
-    def test_variable_type_input_adapter(self):
-        from chatterbot.input import VariableInputTypeAdapter
-
-        adapter = VariableInputTypeAdapter()
+    def test_input_adapter(self):
+        adapter = InputAdapter(self.chatbot)
 
         statement = Statement(text='_')
 

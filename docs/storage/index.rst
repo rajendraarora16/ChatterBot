@@ -11,25 +11,24 @@ to connect to different storage backends.
    create-a-storage-adapter
 
 The storage adapter that your bot uses can be specified by setting
-the :code:`storage_adapter` parameter to the import path of the
+the ``storage_adapter`` parameter to the import path of the
 storage adapter you want to use. 
 
 .. code-block:: python
 
    chatbot = ChatBot(
        "My ChatterBot",
-       storage_adapter="chatterbot.storage.JsonFileStorageAdapter"
+       storage_adapter="chatterbot.storage.SQLStorageAdapter"
    )
 
-Json File Storage Adapter
-=========================
+SQL Storage Adapter
+===================
 
-.. autoclass:: chatterbot.storage.JsonFileStorageAdapter
+.. autoclass:: chatterbot.storage.SQLStorageAdapter
    :members:
-   :special-members: AdapterUnsuitableForProductionWarning
 
-Mongo Database Adapter
-======================
+MongoDB Storage Adapter
+=======================
 
 .. autoclass:: chatterbot.storage.MongoDatabaseAdapter
    :members:

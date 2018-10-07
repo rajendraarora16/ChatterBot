@@ -3,6 +3,9 @@ ChatterBot Corpus
 
 This is a :term:`corpus` of dialog data that is included in the chatterbot module.
 
+Additional information about the ``chatterbot-corpus`` module can be found
+in the `ChatterBot Corpus Documentation`_.
+
 Corpus language availability
 ----------------------------
 
@@ -18,8 +21,8 @@ check out the `chatterbot_corpus/data`_ directory in the separate chatterbot-cor
 
    https://github.com/gunthercox/chatterbot-corpus
 
-   The :code:`chatterbot-corpus` is distributed in its own Python package so that it can
-   be released and upgraded independently from the :code:`chatterbot` package.
+   The ``chatterbot-corpus`` is distributed in its own Python package so that it can
+   be released and upgraded independently from the ``chatterbot`` package.
 
 
 Exporting your chat bot's database as a training corpus
@@ -34,7 +37,7 @@ train other chat bots.
 .. code-block:: python
 
    chatbot = ChatBot('Export Example Bot')
-   chatbot.trainer.export_for_training('./export.json')
+   chatbot.trainer.export_for_training('./export.yml')
 
 Here is an example:
 
@@ -42,3 +45,4 @@ Here is an example:
    :language: python
 
 .. _chatterbot_corpus/data: https://github.com/gunthercox/chatterbot-corpus/tree/master/chatterbot_corpus/data
+.. _ChatterBot Corpus Documentation: http://chatterbot-corpus.readthedocs.io/

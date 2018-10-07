@@ -1,4 +1,4 @@
-from mock import MagicMock
+from unittest.mock import MagicMock
 from chatterbot.logic import BestMatch
 from chatterbot.conversation import Statement
 from tests.base_case import ChatBotTestCase
@@ -10,9 +10,8 @@ class BestMatchTestCase(ChatBotTestCase):
     """
 
     def setUp(self):
-        super(BestMatchTestCase, self).setUp()
-        self.adapter = BestMatch()
-        self.adapter.set_chatbot(self.chatbot)
+        super().setUp()
+        self.adapter = BestMatch(self.chatbot)
 
     def test_no_choices(self):
         """
@@ -21,7 +20,7 @@ class BestMatchTestCase(ChatBotTestCase):
         self.adapter.chatbot.storage.filter = MagicMock(return_value=[])
         self.adapter.chatbot.storage.count = MagicMock(return_value=0)
 
-        statement = Statement('What is your quest?')
+        statement = Statement(text='What is your quest?')
 
         with self.assertRaises(BestMatch.EmptyDatasetException):
             self.adapter.get(statement)

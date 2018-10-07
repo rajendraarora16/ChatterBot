@@ -7,7 +7,10 @@ class ListTrainingTests(ChatBotTestCase):
 
     def setUp(self):
         super(ListTrainingTests, self).setUp()
-        self.chatbot.set_trainer(ListTrainer)
+        self.trainer = ListTrainer(
+            self.chatbot,
+            show_training_progress=False
+        )
 
     def test_training_adds_statements(self):
         """
@@ -27,7 +30,7 @@ class ListTrainingTests(ChatBotTestCase):
             "Can I help you with anything?"
         ]
 
-        self.chatbot.train(conversation)
+        self.trainer.train(conversation)
 
         response = self.chatbot.get_response("Thank you.")
 
@@ -40,15 +43,15 @@ class ListTrainingTests(ChatBotTestCase):
             "I do not like your hat."
         ]
 
-        self.chatbot.train(conversation)
-        self.chatbot.train(conversation)
+        self.trainer.train(conversation)
+        self.trainer.train(conversation)
 
         statements = self.chatbot.storage.filter(
-            in_response_to__contains="Do you like my hat?"
+            in_response_to="Do you like my hat?"
         )
-        response = statements[0].in_response_to[0]
 
-        self.assertEqual(response.occurrence, 2)
+        self.assertIsLength(statements, 2)
+        self.assertEqual(statements[0].in_response_to, "Do you like my hat?")
 
     def test_database_has_correct_format(self):
         """
@@ -71,27 +74,20 @@ class ListTrainingTests(ChatBotTestCase):
             "Thanks, you too."
         ]
 
-        self.chatbot.train(conversation)
+        self.trainer.train(conversation)
 
         # There should be a total of 9 statements in the database after training
         self.assertEqual(self.chatbot.storage.count(), 9)
 
         # The first statement should be in response to another statement
-        self.assertEqual(
-            len(self.chatbot.storage.find(conversation[0]).in_response_to),
-            0
-        )
-
-        # The second statement should have one response
-        self.assertEqual(
-            len(self.chatbot.storage.find(conversation[1]).in_response_to),
-            1
+        self.assertIsNone(
+            self.chatbot.storage.filter(text=conversation[0])[0].in_response_to
         )
 
         # The second statement should be in response to the first statement
-        self.assertIn(
-            conversation[0],
-            self.chatbot.storage.find(conversation[1]).in_response_to,
+        self.assertEqual(
+            self.chatbot.storage.filter(text=conversation[1])[0].in_response_to,
+            conversation[0]
         )
 
     def test_training_with_unicode_characters(self):
@@ -109,7 +105,39 @@ class ListTrainingTests(ChatBotTestCase):
             u'∧ ∨ ⊻ ⊼ ⊽ ⋎ ⋏ ⟑ ⟇ ⩑ ⩒ ⩓ ⩔ ⩕ ⩖ ⩗ ⩘ ⩙ ⩚ ⩛ ⩜ ⩝ ⩞ ⩟ ⩠ ⩢',
         ]
 
-        self.chatbot.train(conversation)
+        self.trainer.train(conversation)
+
+        response = self.chatbot.get_response(conversation[1])
+
+        self.assertEqual(response, conversation[2])
+
+    def test_training_with_emoji_characters(self):
+        """
+        Ensure that the training method adds statements containing emojis.
+        """
+        conversation = [
+            u'Hi, how are you? 😃',
+            u'I am just dandy 👍',
+            u'Superb! 🎆'
+        ]
+
+        self.trainer.train(conversation)
+
+        response = self.chatbot.get_response(conversation[1])
+
+        self.assertEqual(response, conversation[2])
+
+    def test_training_with_unicode_bytestring(self):
+        """
+        Test training with an 8-bit bytestring.
+        """
+        conversation = [
+            'Hi, how are you?',
+            '\xe4\xbd\xa0\xe5\xa5\xbd\xe5\x90\x97',
+            'Superb!'
+        ]
+
+        self.trainer.train(conversation)
 
         response = self.chatbot.get_response(conversation[1])
 
@@ -128,7 +156,7 @@ class ListTrainingTests(ChatBotTestCase):
 
         similar_question = 'how do I login to gmail?'
 
-        self.chatbot.train(training)
+        self.trainer.train(training)
 
         response_to_trained_set = self.chatbot.get_response('how do you login to gmail?')
         response1 = self.chatbot.get_response(similar_question)
@@ -136,6 +164,19 @@ class ListTrainingTests(ChatBotTestCase):
 
         self.assertEqual(response_to_trained_set, response1)
         self.assertEqual(response1, response2)
+
+    def test_consecutive_trainings_same_responses_different_inputs(self):
+        """
+        Test consecutive trainings with the same responses to different inputs.
+        """
+        self.trainer.train(["A", "B" "C"])
+        self.trainer.train(["B", "C", "D"])
+
+        response1 = self.chatbot.get_response("B")
+        response2 = self.chatbot.get_response("C")
+
+        self.assertEqual(response1.text, "C")
+        self.assertEqual(response2.text, "D")
 
 
 class ChatterBotResponseTests(ChatBotTestCase):
@@ -145,7 +186,10 @@ class ChatterBotResponseTests(ChatBotTestCase):
         """
         Set up a database for testing.
         """
-        self.chatbot.set_trainer(ListTrainer)
+        self.trainer = ListTrainer(
+            self.chatbot,
+            show_training_progress=False
+        )
 
         data1 = [
             "african or european?",
@@ -166,9 +210,9 @@ class ChatterBotResponseTests(ChatBotTestCase):
             "Blue."
         ]
 
-        self.chatbot.train(data1)
-        self.chatbot.train(data2)
-        self.chatbot.train(data3)
+        self.trainer.train(data1)
+        self.trainer.train(data2)
+        self.trainer.train(data3)
 
     def test_answer_to_known_input(self):
         """
@@ -191,7 +235,7 @@ class ChatterBotResponseTests(ChatBotTestCase):
         """
         Make sure that the if the last line in a file
         matches the input text then a index error does
-        not occure.
+        not occur.
         """
         input_text = "Siri is my cat"
         response = self.chatbot.get_response(input_text)

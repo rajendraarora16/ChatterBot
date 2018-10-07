@@ -1,5 +1,4 @@
-from __future__ import unicode_literals
-from .output_adapter import OutputAdapter
+from chatterbot.output import OutputAdapter
 
 
 class TerminalAdapter(OutputAdapter):
@@ -8,7 +7,7 @@ class TerminalAdapter(OutputAdapter):
     communicate through the terminal.
     """
 
-    def process_response(self, statement, session_id=None):
+    def process_response(self, statement):
         """
         Print the response to the user's input.
         """

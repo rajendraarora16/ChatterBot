@@ -1,7 +1,5 @@
-from __future__ import unicode_literals
 from chatterbot.input import InputAdapter
 from chatterbot.conversation import Statement
-from chatterbot.utils import input_function
 
 
 class TerminalAdapter(InputAdapter):
@@ -10,9 +8,9 @@ class TerminalAdapter(InputAdapter):
     communicate through the terminal.
     """
 
-    def process_input(self, *args, **kwargs):
+    def process_input(self, *args):
         """
         Read the user's input from the terminal.
         """
-        user_input = input_function()
+        user_input = input()
         return Statement(user_input)

@@ -9,7 +9,7 @@ from chatterbot import ChatBot
 # Create a new instance of a ChatBot
 bot = ChatBot(
     "Terminal",
-    storage_adapter="chatterbot.storage.JsonFileStorageAdapter",
+    storage_adapter="chatterbot.storage.SQLStorageAdapter",
     logic_adapters=[
         "chatterbot.logic.MathematicalEvaluation",
         "chatterbot.logic.TimeLogicAdapter",
@@ -17,7 +17,7 @@ bot = ChatBot(
     ],
     input_adapter="chatterbot.input.TerminalAdapter",
     output_adapter="chatterbot.output.TerminalAdapter",
-    database="../database.db"
+    database_uri="../database.db"
 )
 
 print("Type something to begin...")

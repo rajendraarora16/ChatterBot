@@ -1,32 +1,54 @@
-from __future__ import unicode_literals
 from chatterbot.adapters import Adapter
+from chatterbot.conversation import Statement
 
 
 class InputAdapter(Adapter):
     """
-    This is an abstract class that represents the
+    This class provides base methods and represents the
     interface that all input adapters should implement.
     """
 
-    def process_input(self, *args, **kwargs):
-        """
-        Returns a statement object based on the input source.
-        """
-        raise self.AdapterMethodNotImplementedError()
+    DICT = 'json'
+    TEXT = 'text'
+    OBJECT = 'object'
+    VALID_FORMATS = (DICT, TEXT, OBJECT, )
 
-    def process_input_statement(self, *args, **kwargs):
+    def detect_type(self, statement):
+        if hasattr(statement, 'text'):
+            return self.OBJECT
+        if isinstance(statement, str):
+            return self.TEXT
+        if isinstance(statement, dict):
+            return self.DICT
+
+        input_type = type(statement)
+
+        raise self.UnrecognizedInputFormatException(
+            'The type {} is not recognized as a valid input type.'.format(
+                input_type
+            )
+        )
+
+    def process_input(self, statement):
+        input_type = self.detect_type(statement)
+
+        # Return the statement object without modification
+        if input_type == self.OBJECT:
+            return statement
+
+        # Convert the input string into a statement object
+        if input_type == self.TEXT:
+            return Statement(text=statement)
+
+        # Convert input dictionary into a statement object
+        if input_type == self.DICT:
+            return Statement(**statement)
+
+    class UnrecognizedInputFormatException(Exception):
         """
-        Return an existing statement object (if one exists).
+        Exception raised when an input format is specified
+        that is not in the InputAdapter.VALID_FORMATS variable.
         """
-        input_statement = self.process_input(*args, **kwargs)
-        self.logger.info('Recieved input statement: {}'.format(input_statement.text))
 
-        existing_statement = self.chatbot.storage.find(input_statement.text)
-
-        if existing_statement:
-            self.logger.info('"{}" is a known statement'.format(input_statement.text))
-            input_statement = existing_statement
-        else:
-            self.logger.info('"{}" is not a known statement'.format(input_statement.text))
-
-        return input_statement
+        def __init__(self, message='The input format was not recognized.'):
+            super().__init__(message)

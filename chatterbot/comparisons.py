@@ -1,9 +1,13 @@
-# -*- coding: utf-8 -*-
-
 """
 This module contains various text-comparison algorithms
 designed to compare one statement to another.
 """
+
+# Use python-Levenshtein if available
+try:
+    from Levenshtein.StringMatcher import StringMatcher as SequenceMatcher
+except ImportError:
+    from difflib import SequenceMatcher
 
 
 class Comparator:
@@ -49,27 +53,14 @@ class LevenshteinDistance(Comparator):
         :return: The percent of similarity between the text of the statements.
         :rtype: float
         """
-        import sys
-
-        # Use python-Levenshtein if available
-        try:
-            from Levenshtein.StringMatcher import StringMatcher as SequenceMatcher
-        except ImportError:
-            from difflib import SequenceMatcher
-
-        PYTHON = sys.version_info[0]
 
         # Return 0 if either statement has a falsy text value
         if not statement.text or not other_statement.text:
             return 0
 
         # Get the lowercase version of both strings
-        if PYTHON < 3:
-            statement_text = unicode(statement.text.lower()) # NOQA
-            other_statement_text = unicode(other_statement.text.lower()) # NOQA
-        else:
-            statement_text = str(statement.text.lower())
-            other_statement_text = str(other_statement.text.lower())
+        statement_text = str(statement.text.lower())
+        other_statement_text = str(other_statement.text.lower())
 
         similarity = SequenceMatcher(
             None,
@@ -97,7 +88,7 @@ class SynsetDistance(Comparator):
         """
         Download required NLTK corpora if they have not already been downloaded.
         """
-        from .utils import nltk_download_corpus
+        from chatterbot.utils import nltk_download_corpus
 
         nltk_download_corpus('corpora/wordnet')
 
@@ -105,9 +96,17 @@ class SynsetDistance(Comparator):
         """
         Download required NLTK corpora if they have not already been downloaded.
         """
-        from .utils import nltk_download_corpus
+        from chatterbot.utils import nltk_download_corpus
 
         nltk_download_corpus('tokenizers/punkt')
+
+    def initialize_nltk_stopwords(self):
+        """
+        Download required NLTK corpora if they have not already been downloaded.
+        """
+        from chatterbot.utils import nltk_download_corpus
+
+        nltk_download_corpus('corpora/stopwords')
 
     def compare(self, statement, other_statement):
         """
@@ -135,7 +134,10 @@ class SynsetDistance(Comparator):
         # Because path_similarity returns a value between 0 and 1,
         # max_possible_similarity is the number of words in the longer
         # of the two input statements.
-        max_possible_similarity = max(
+        max_possible_similarity = min(
+            len(statement.text.split()),
+            len(other_statement.text.split())
+        ) / max(
             len(statement.text.split()),
             len(other_statement.text.split())
         )
@@ -174,7 +176,7 @@ class SentimentComparison(Comparator):
         Download the NLTK vader lexicon for sentiment analysis
         that is required for this algorithm to run.
         """
-        from .utils import nltk_download_corpus
+        from chatterbot.utils import nltk_download_corpus
 
         nltk_download_corpus('sentiment/vader_lexicon')
 
@@ -242,16 +244,23 @@ class JaccardSimilarity(Comparator):
     .. _`Jaccard similarity index`: https://en.wikipedia.org/wiki/Jaccard_index
     """
 
-    SIMILARITY_THRESHOLD = 0.5
-
     def initialize_nltk_wordnet(self):
         """
         Download the NLTK wordnet corpora that is required for this algorithm
         to run only if the corpora has not already been downloaded.
         """
-        from .utils import nltk_download_corpus
+        from chatterbot.utils import nltk_download_corpus
 
         nltk_download_corpus('corpora/wordnet')
+
+    def initialize_nltk_averaged_perceptron_tagger(self):
+        """
+        Download the NLTK averaged perceptron tagger that is required for this algorithm
+        to run only if the corpora has not already been downloaded.
+        """
+        from chatterbot.utils import nltk_download_corpus
+
+        nltk_download_corpus('averaged_perceptron_tagger')
 
     def compare(self, statement, other_statement):
         """
@@ -262,14 +271,20 @@ class JaccardSimilarity(Comparator):
         import nltk
         import string
 
+        # Get default English stopwords and extend with punctuation
+        stopwords = nltk.corpus.stopwords.words('english')
+        stopwords.append('')
+
+        lemmatizer = nltk.stem.wordnet.WordNetLemmatizer()
+
+        # Make both strings lowercase
         a = statement.text.lower()
         b = other_statement.text.lower()
 
-        # Get default English stopwords and extend with punctuation
-        stopwords = nltk.corpus.stopwords.words('english')
-        stopwords.extend(string.punctuation)
-        stopwords.append('')
-        lemmatizer = nltk.stem.wordnet.WordNetLemmatizer()
+        # Remove punctuation from each string
+        table = str.maketrans(dict.fromkeys(string.punctuation))
+        a = a.translate(table)
+        b = b.translate(table)
 
         def get_wordnet_pos(pos_tag):
             if pos_tag[1].startswith('J'):
@@ -283,32 +298,26 @@ class JaccardSimilarity(Comparator):
             else:
                 return (pos_tag[0], wordnet.NOUN)
 
-        ratio = 0
-        pos_a = map(get_wordnet_pos, nltk.pos_tag(nltk.tokenize.word_tokenize(a)))
-        pos_b = map(get_wordnet_pos, nltk.pos_tag(nltk.tokenize.word_tokenize(b)))
+        pos_a = list(map(get_wordnet_pos, nltk.pos_tag(nltk.tokenize.word_tokenize(a))))
+        pos_b = list(map(get_wordnet_pos, nltk.pos_tag(nltk.tokenize.word_tokenize(b))))
+
         lemma_a = [
             lemmatizer.lemmatize(
-                token.strip(string.punctuation),
-                pos
-            ) for token, pos in pos_a if pos == wordnet.NOUN and token.strip(
-                string.punctuation
-            ) not in stopwords
+                token, pos
+            ) for token, pos in pos_a if token not in stopwords
         ]
         lemma_b = [
             lemmatizer.lemmatize(
-                token.strip(string.punctuation),
-                pos
-            ) for token, pos in pos_b if pos == wordnet.NOUN and token.strip(
-                string.punctuation
-            ) not in stopwords
+                token, pos
+            ) for token, pos in pos_b if token not in stopwords
         ]
 
         # Calculate Jaccard similarity
-        try:
-            ratio = len(set(lemma_a).intersection(lemma_b)) / float(len(set(lemma_a).union(lemma_b)))
-        except Exception as e:
-            print('Error', e)
-        return ratio >= self.SIMILARITY_THRESHOLD
+        numerator = len(set(lemma_a).intersection(lemma_b))
+        denominator = float(len(set(lemma_a).union(lemma_b)))
+        ratio = numerator / denominator
+
+        return ratio
 
 
 # ---------------------------------------- #

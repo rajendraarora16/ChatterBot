@@ -18,10 +18,6 @@ class StorageAdapterTestCase(TestCase):
         with self.assertRaises(StorageAdapter.AdapterMethodNotImplementedError):
             self.adapter.count()
 
-    def test_find(self):
-        with self.assertRaises(StorageAdapter.AdapterMethodNotImplementedError):
-            self.adapter.find('')
-
     def test_filter(self):
         with self.assertRaises(StorageAdapter.AdapterMethodNotImplementedError):
             self.adapter.filter()
@@ -30,6 +26,10 @@ class StorageAdapterTestCase(TestCase):
         with self.assertRaises(StorageAdapter.AdapterMethodNotImplementedError):
             self.adapter.remove('')
 
+    def test_create(self):
+        with self.assertRaises(StorageAdapter.AdapterMethodNotImplementedError):
+            self.adapter.create()
+
     def test_update(self):
         with self.assertRaises(StorageAdapter.AdapterMethodNotImplementedError):
             self.adapter.update('')
@@ -37,10 +37,6 @@ class StorageAdapterTestCase(TestCase):
     def test_get_random(self):
         with self.assertRaises(StorageAdapter.AdapterMethodNotImplementedError):
             self.adapter.get_random()
-
-    def test_get_response_statements(self):
-        with self.assertRaises(StorageAdapter.AdapterMethodNotImplementedError):
-            self.adapter.get_response_statements()
 
     def test_drop(self):
         with self.assertRaises(StorageAdapter.AdapterMethodNotImplementedError):

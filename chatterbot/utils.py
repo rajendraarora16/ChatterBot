@@ -17,20 +17,20 @@ def import_module(dotted_path):
     return getattr(module, module_parts[-1])
 
 
-def initialize_class(data, **kwargs):
+def initialize_class(data, *args, **kwargs):
     """
     :param data: A string or dictionary containing a import_path attribute.
     """
     if isinstance(data, dict):
-        import_path = data.pop('import_path')
+        import_path = data.get('import_path')
         data.update(kwargs)
         Class = import_module(import_path)
 
-        return Class(**data)
+        return Class(*args, **data)
     else:
         Class = import_module(data)
 
-        return Class(**kwargs)
+        return Class(*args, **kwargs)
 
 
 def validate_adapter_class(validate_class, adapter_class):
@@ -46,19 +46,20 @@ def validate_adapter_class(validate_class, adapter_class):
 
     :raises: Adapter.InvalidAdapterTypeException
     """
-    from .adapters import Adapter
+    from chatterbot.adapters import Adapter
 
     # If a dictionary was passed in, check if it has an import_path attribute
     if isinstance(validate_class, dict):
-        origional_data = validate_class.copy()
-        validate_class = validate_class.get('import_path')
 
-        if not validate_class:
+        if 'import_path' not in validate_class:
             raise Adapter.InvalidAdapterTypeException(
                 'The dictionary {} must contain a value for "import_path"'.format(
-                    str(origional_data)
+                    str(validate_class)
                 )
             )
+
+        # Set the class to the import path for the next check
+        validate_class = validate_class.get('import_path')
 
     if not issubclass(import_module(validate_class), adapter_class):
         raise Adapter.InvalidAdapterTypeException(
@@ -67,26 +68,6 @@ def validate_adapter_class(validate_class, adapter_class):
                 adapter_class.__name__
             )
         )
-
-
-def input_function():
-    """
-    Normalizes reading input between python 2 and 3.
-    The function 'raw_input' becomes 'input' in Python 3.
-    """
-    import sys
-
-    if sys.version_info[0] < 3:
-        user_input = str(raw_input()) # NOQA
-
-        # Avoid problems using format strings with unicode characters
-        if user_input:
-            user_input = user_input.decode('utf-8')
-
-    else:
-        user_input = input() # NOQA
-
-    return user_input
 
 
 def nltk_download_corpus(resource_path):
@@ -134,6 +115,10 @@ def remove_stopwords(tokens, language):
     Takes a language (i.e. 'english'), and a set of word tokens.
     Returns the tokenized text with any stopwords removed.
     Stop words are words like "is, the, a, ..."
+
+    Be sure to download the required NLTK corpus before calling this function:
+    - from chatterbot.utils import nltk_download_corpus
+    - nltk_download_corpus('corpora/stopwords')
     """
     from nltk.corpus import stopwords
 
@@ -144,6 +129,22 @@ def remove_stopwords(tokens, language):
     tokens = set(tokens) - set(stop_words)
 
     return tokens
+
+
+def get_greatest_confidence(statement, options):
+    """
+    Returns the greatest confidence value for a statement that occurs
+    multiple times in the set of options.
+
+    :param statement: A statement object.
+    :param options: A tuple in the format of (confidence, statement).
+    """
+    values = []
+    for option in options:
+        if option[1] == statement:
+            values.append(option[0])
+
+    return max(values)
 
 
 def get_response_time(chatbot):
@@ -166,26 +167,30 @@ def get_response_time(chatbot):
     return time.time() - start_time
 
 
-def generate_strings(total_strings, string_length=20):
+def print_progress_bar(description, iteration_counter, total_items, progress_bar_length=20):
     """
-    Generate a list of random strings.
+    Print progress bar
+    :param description: Training description
+    :type description: str
 
-    :param total_strings: The number of strings to generate.
-    :type total_strings: int
+    :param iteration_counter: Incremental counter
+    :type iteration_counter: int
 
-    :param string_length: The length of each string to generate.
-    :type string_length: int
+    :param total_items: total number items
+    :type total_items: int
 
-    :returns: The generated list of random strings.
-    :rtype: list
+    :param progress_bar_length: Progress bar length
+    :type progress_bar_length: int
+
+    :returns: void
+    :rtype: void
     """
-    import random
-    import string
+    import sys
 
-    statements = []
-    for _ in range(0, total_strings):
-        text = ''.join(
-            random.choice(string.ascii_letters + string.digits + ' ') for _ in range(string_length)
-        )
-        statements.append(text)
-    return statements
+    percent = float(iteration_counter) / total_items
+    hashes = '#' * int(round(percent * progress_bar_length))
+    spaces = ' ' * (progress_bar_length - len(hashes))
+    sys.stdout.write("\r{0}: [{1}] {2}%".format(description, hashes + spaces, int(round(percent * 100))))
+    sys.stdout.flush()
+    if total_items == iteration_counter:
+        print("\r")

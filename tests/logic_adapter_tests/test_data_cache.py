@@ -10,7 +10,7 @@ class DummyMutatorLogicAdapter(LogicAdapter):
     """
 
     def process(self, statement):
-        statement.add_extra_data('pos_tags', 'NN')
+        statement.add_tags('pos_tags:NN')
 
         self.chatbot.storage.update(statement)
         statement.confidence = 1
@@ -20,14 +20,18 @@ class DummyMutatorLogicAdapter(LogicAdapter):
 class DataCachingTests(ChatBotTestCase):
 
     def setUp(self):
-        super(DataCachingTests, self).setUp()
+        super().setUp()
 
-        self.chatbot.logic = DummyMutatorLogicAdapter()
-        self.chatbot.logic.set_chatbot(self.chatbot)
+        self.chatbot.logic_adapters = [
+            DummyMutatorLogicAdapter(self.chatbot)
+        ]
 
-        self.chatbot.set_trainer(ListTrainer)
+        self.trainer = ListTrainer(
+            self.chatbot,
+            show_training_progress=False
+        )
 
-        self.chatbot.train([
+        self.trainer.train([
             'Hello',
             'How are you?'
         ])
@@ -37,11 +41,12 @@ class DataCachingTests(ChatBotTestCase):
         Test that an additional data attribute can be added to the statement
         and that this attribute is saved.
         """
-        self.chatbot.get_response('Hello')
-        found_statement = self.chatbot.storage.find('Hello')
-        data = found_statement.serialize()
+        self.chatbot.get_response('Hello', conversation='test')
+        results = self.chatbot.storage.filter(
+            text='Hello',
+            in_response_to=None,
+            conversation='test'
+        )
 
-        self.assertIsNotNone(found_statement)
-        self.assertIn('extra_data', data)
-        self.assertIn('pos_tags', data['extra_data'])
-        self.assertEqual('NN', data['extra_data']['pos_tags'])
+        self.assertEqual(len(results), 1)
+        self.assertIn('pos_tags:NN', results[0].get_tags())

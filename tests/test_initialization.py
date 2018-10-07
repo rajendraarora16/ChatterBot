@@ -1,45 +1,43 @@
-from .base_case import ChatBotTestCase
+from tests.base_case import ChatBotTestCase
 
 
-class StringInitalizationTestCase(ChatBotTestCase):
+class StringInitializationTestCase(ChatBotTestCase):
 
     def get_kwargs(self):
         return {
-            'input_adapter': 'chatterbot.input.VariableInputTypeAdapter',
+            'input_adapter': 'chatterbot.input.InputAdapter',
             'output_adapter': 'chatterbot.output.OutputAdapter',
-            'database': None,
-            'silence_performance_warning': True
+            'database_uri': None
         }
 
     def test_storage_initialized(self):
-        from chatterbot.storage import JsonFileStorageAdapter
-        self.assertTrue(isinstance(self.chatbot.storage, JsonFileStorageAdapter))
+        from chatterbot.storage import SQLStorageAdapter
+        self.assertTrue(isinstance(self.chatbot.storage, SQLStorageAdapter))
 
     def test_logic_initialized(self):
         from chatterbot.logic import BestMatch
-        self.assertEqual(len(self.chatbot.logic.adapters), 1)
-        self.assertTrue(isinstance(self.chatbot.logic.adapters[0], BestMatch))
+        self.assertEqual(len(self.chatbot.logic_adapters), 1)
+        self.assertTrue(isinstance(self.chatbot.logic_adapters[0], BestMatch))
 
     def test_input_initialized(self):
-        from chatterbot.input import VariableInputTypeAdapter
-        self.assertTrue(isinstance(self.chatbot.input, VariableInputTypeAdapter))
+        from chatterbot.input import InputAdapter
+        self.assertTrue(isinstance(self.chatbot.input, InputAdapter))
 
     def test_output_initialized(self):
         from chatterbot.output import OutputAdapter
         self.assertTrue(isinstance(self.chatbot.output, OutputAdapter))
 
 
-class DictionaryInitalizationTestCase(ChatBotTestCase):
+class DictionaryInitializationTestCase(ChatBotTestCase):
 
     def get_kwargs(self):
         return {
             'storage_adapter': {
-                'import_path': 'chatterbot.storage.JsonFileStorageAdapter',
-                'database': None,
-                'silence_performance_warning': True
+                'import_path': 'chatterbot.storage.SQLStorageAdapter',
+                'database_uri': None
             },
             'input_adapter': {
-                'import_path': 'chatterbot.input.VariableInputTypeAdapter'
+                'import_path': 'chatterbot.input.InputAdapter'
             },
             'output_adapter': {
                 'import_path': 'chatterbot.output.OutputAdapter'
@@ -55,19 +53,19 @@ class DictionaryInitalizationTestCase(ChatBotTestCase):
         }
 
     def test_storage_initialized(self):
-        from chatterbot.storage import JsonFileStorageAdapter
-        self.assertTrue(isinstance(self.chatbot.storage, JsonFileStorageAdapter))
+        from chatterbot.storage import SQLStorageAdapter
+        self.assertTrue(isinstance(self.chatbot.storage, SQLStorageAdapter))
 
     def test_logic_initialized(self):
         from chatterbot.logic import BestMatch
         from chatterbot.logic import MathematicalEvaluation
-        self.assertEqual(len(self.chatbot.logic.adapters), 2)
-        self.assertTrue(isinstance(self.chatbot.logic.adapters[0], BestMatch))
-        self.assertTrue(isinstance(self.chatbot.logic.adapters[1], MathematicalEvaluation))
+        self.assertEqual(len(self.chatbot.logic_adapters), 2)
+        self.assertTrue(isinstance(self.chatbot.logic_adapters[0], BestMatch))
+        self.assertTrue(isinstance(self.chatbot.logic_adapters[1], MathematicalEvaluation))
 
     def test_input_initialized(self):
-        from chatterbot.input import VariableInputTypeAdapter
-        self.assertTrue(isinstance(self.chatbot.input, VariableInputTypeAdapter))
+        from chatterbot.input import InputAdapter
+        self.assertTrue(isinstance(self.chatbot.input, InputAdapter))
 
     def test_output_initialized(self):
         from chatterbot.output import OutputAdapter

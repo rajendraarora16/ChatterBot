@@ -1,5 +1,4 @@
-from unittest import TestCase
-from unittest import SkipTest
+from unittest import TestCase, SkipTest
 from chatterbot import ChatBot
 
 
@@ -25,19 +24,11 @@ class ChatBotTestCase(TestCase):
 
     def get_kwargs(self):
         return {
-            'input_adapter': 'chatterbot.input.VariableInputTypeAdapter',
+            'input_adapter': 'chatterbot.input.InputAdapter',
             'output_adapter': 'chatterbot.output.OutputAdapter',
-            # None runs the JSON database in-memory
-            'database': None,
-            'silence_performance_warning': True
+            # Run the test database in-memory
+            'database_uri': None
         }
-
-    def random_string(self, start=0, end=9000):
-        """
-        Generate a string based on a random number.
-        """
-        from random import randint
-        return str(randint(start, end))
 
 
 class ChatBotMongoTestCase(ChatBotTestCase):
@@ -59,7 +50,7 @@ class ChatBotMongoTestCase(ChatBotTestCase):
 
     def get_kwargs(self):
         kwargs = super(ChatBotMongoTestCase, self).get_kwargs()
-        kwargs['database'] = self.random_string()
+        kwargs['database_uri'] = 'mongodb://localhost:27017/chatterbot_test_database'
         kwargs['storage_adapter'] = 'chatterbot.storage.MongoDatabaseAdapter'
         return kwargs
 
@@ -71,10 +62,10 @@ class ChatBotSQLTestCase(ChatBotTestCase):
         Create the tables in the database before each test is run.
         """
         super(ChatBotSQLTestCase, self).setUp()
-        self.chatbot.storage.create()
+        self.chatbot.storage.create_database()
 
     def get_kwargs(self):
         kwargs = super(ChatBotSQLTestCase, self).get_kwargs()
-        del kwargs['database']
+        del kwargs['database_uri']
         kwargs['storage_adapter'] = 'chatterbot.storage.SQLStorageAdapter'
         return kwargs

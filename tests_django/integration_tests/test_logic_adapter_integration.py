@@ -1,36 +1,33 @@
-from django.test import TestCase
-from chatterbot.ext.django_chatterbot.models import Statement, Response
+from tests_django.base_case import ChatterBotTestCase
+from chatterbot.ext.django_chatterbot.models import Statement
 
 
-class LogicIntegrationTestCase(TestCase):
+class LogicIntegrationTestCase(ChatterBotTestCase):
     """
     Tests to make sure that logic adapters
     function correctly when using Django.
     """
 
     def setUp(self):
-        super(LogicIntegrationTestCase, self).setUp()
-        from chatterbot import ChatBot
-        from chatterbot.ext.django_chatterbot import settings
-
-        self.chatbot = ChatBot(**settings.CHATTERBOT)
+        super().setUp()
 
         Statement.objects.create(text='Default statement')
 
     def test_best_match(self):
         from chatterbot.logic import BestMatch
 
-        adapter = BestMatch()
-        adapter.set_chatbot(self.chatbot)
+        adapter = BestMatch(self.chatbot)
 
-        statement1 = Statement(text='Do you like programming?')
-        statement1.save()
+        statement1 = Statement.objects.create(
+            text='Do you like programming?',
+            conversation='test'
+        )
 
-        statement2 = Statement(text='Yes')
-        statement2.save()
-
-        response = Response(statement=statement1, response=statement2)
-        response.save()
+        Statement.objects.create(
+            text='Yes',
+            in_response_to=statement1.text,
+            conversation='test'
+        )
 
         response = adapter.process(statement1)
 
@@ -40,33 +37,30 @@ class LogicIntegrationTestCase(TestCase):
     def test_low_confidence(self):
         from chatterbot.logic import LowConfidenceAdapter
 
-        adapter = LowConfidenceAdapter()
-        adapter.set_chatbot(self.chatbot)
+        adapter = LowConfidenceAdapter(self.chatbot)
 
         statement = Statement(text='Why is the sky blue?')
 
         response = adapter.process(statement)
 
-        self.assertEqual(response.text, adapter.default_response)
+        self.assertEqual(response.text, adapter.default_responses[0])
 
     def test_mathematical_evaluation(self):
         from chatterbot.logic import MathematicalEvaluation
 
-        adapter = MathematicalEvaluation()
-        adapter.set_chatbot(self.chatbot)
+        adapter = MathematicalEvaluation(self.chatbot)
 
         statement = Statement(text='What is 6 + 6?')
 
         response = adapter.process(statement)
 
-        self.assertEqual(response.text, '( 6 + 6 ) = 12')
+        self.assertEqual(response.text, '6 + 6 = 12')
         self.assertEqual(response.confidence, 1)
 
     def test_time(self):
         from chatterbot.logic import TimeLogicAdapter
 
-        adapter = TimeLogicAdapter()
-        adapter.set_chatbot(self.chatbot)
+        adapter = TimeLogicAdapter(self.chatbot)
 
         statement = Statement(text='What time is it?')
 

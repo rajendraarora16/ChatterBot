@@ -1,5 +1,5 @@
 from tests.base_case import ChatBotTestCase
-from mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock
 from chatterbot.trainers import TwitterTrainer
 import os
 import json
@@ -46,11 +46,12 @@ class TwitterTrainerTestCase(ChatBotTestCase):
         super(TwitterTrainerTestCase, self).setUp()
 
         self.trainer = TwitterTrainer(
-            self.chatbot.storage,
+            self.chatbot,
             twitter_consumer_key='twitter_consumer_key',
             twitter_consumer_secret='twitter_consumer_secret',
             twitter_access_token_key='twitter_access_token_key',
-            twitter_access_token_secret='twitter_access_token_secret'
+            twitter_access_token_secret='twitter_access_token_secret',
+            show_training_progress=False
         )
         self.trainer.api = Mock()
 
@@ -78,5 +79,5 @@ class TwitterTrainerTestCase(ChatBotTestCase):
     def test_train(self):
         self.trainer.train()
 
-        statement_created = self.trainer.storage.filter()
+        statement_created = self.trainer.chatbot.storage.filter()
         self.assertTrue(len(statement_created))

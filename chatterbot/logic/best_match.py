@@ -1,10 +1,9 @@
-from __future__ import unicode_literals
-from .logic_adapter import LogicAdapter
+from chatterbot.logic import LogicAdapter
 
 
 class BestMatch(LogicAdapter):
     """
-    A logic adater that returns a response based on known responses to
+    A logic adapter that returns a response based on known responses to
     the closest matches to the input statement.
     """
 
@@ -18,7 +17,7 @@ class BestMatch(LogicAdapter):
         if not statement_list:
             if self.chatbot.storage.count():
                 # Use a randomly picked statement
-                self.logger.info(
+                self.chatbot.logger.info(
                     'No statements have known responses. ' +
                     'Choosing a random response to return.'
                 )
@@ -52,27 +51,31 @@ class BestMatch(LogicAdapter):
 
         # Select the closest match to the input statement
         closest_match = self.get(input_statement)
-        self.logger.info('Using "{}" as a close match to "{}"'.format(
+        self.chatbot.logger.info('Using "{}" as a close match to "{}"'.format(
             input_statement.text, closest_match.text
         ))
 
         # Get all statements that are in response to the closest match
         response_list = self.chatbot.storage.filter(
-            in_response_to__contains=closest_match.text
+            in_response_to=closest_match.text
         )
 
         if response_list:
-            self.logger.info(
+            self.chatbot.logger.info(
                 'Selecting response from {} optimal responses.'.format(
                     len(response_list)
                 )
             )
-            response = self.select_response(input_statement, response_list)
+            response = self.select_response(
+                input_statement,
+                response_list,
+                self.chatbot.storage
+            )
             response.confidence = closest_match.confidence
-            self.logger.info('Response selected. Using "{}"'.format(response.text))
+            self.chatbot.logger.info('Response selected. Using "{}"'.format(response.text))
         else:
             response = self.chatbot.storage.get_random()
-            self.logger.info(
+            self.chatbot.logger.info(
                 'No response to "{}" found. Selecting a random response.'.format(
                     closest_match.text
                 )

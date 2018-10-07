@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .base_case import ChatBotTestCase
+from tests.base_case import ChatBotTestCase
 from unittest import TestCase
 from chatterbot import utils
 
@@ -28,14 +28,16 @@ class UtilityTests(TestCase):
         self.assertIn('test', list(words))
         self.assertIn('string', list(words))
 
-    def test_generate_strings(self):
-        """
-        Test that we can generate 2 strings of length 10.
-        """
-        strings = utils.generate_strings(2, 10)
-        self.assertEqual(len(strings), 2)
-        self.assertEqual(len(strings[0]), 10)
-        self.assertEqual(len(strings[1]), 10)
+    def test_get_greatest_confidence(self):
+        statement = 'Hello'
+        options = [
+            (0.50, 'Hello'),
+            (0.85, 'Hello'),
+            (0.42, 'Hello')
+        ]
+        value = utils.get_greatest_confidence(statement, options)
+
+        self.assertEqual(value, 0.85)
 
 
 class UtilityChatBotTestCase(ChatBotTestCase):

@@ -10,24 +10,33 @@ class RepetitiveResponseFilterTestCase(ChatBotMongoTestCase):
         """
         Test that repetitive responses are filtered out of the results.
         """
+        from chatterbot.conversation import Statement
         from chatterbot.filters import RepetitiveResponseFilter
         from chatterbot.trainers import ListTrainer
 
         self.chatbot.filters = (RepetitiveResponseFilter(), )
-        self.chatbot.set_trainer(ListTrainer)
 
-        self.chatbot.train([
-            'Hello',
+        self.trainer = ListTrainer(
+            self.chatbot,
+            show_training_progress=False
+        )
+
+        self.trainer.train([
             'Hi',
             'Hello',
             'Hi',
             'Hello',
-            'Hi, how are you?',
-            'I am good.'
+            'Hi',
+            'Hello',
+            'How are you?',
+            'I am good.',
+            'Glad to hear',
+            'How are you?'
         ])
 
-        first_response = self.chatbot.get_response('Hello')
-        second_response = self.chatbot.get_response('Hello')
+        statement = Statement(text='Hello', conversation='training')
+        first_response = self.chatbot.get_response(statement)
+        second_response = self.chatbot.get_response(statement)
 
-        self.assertEqual(first_response.text, 'Hi')
-        self.assertEqual(second_response.text, 'Hi, how are you?')
+        self.assertEqual('I am good.', first_response.text)
+        self.assertEqual('Hi', second_response.text)
